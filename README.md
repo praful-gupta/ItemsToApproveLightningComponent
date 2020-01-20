@@ -7,3 +7,4 @@ Lightning components to show list of records to approve for logged in user(eithe
  - Shows related record informations also at one place.
  
  
+![alt text](https://github.com/praful-gupta/ItemsToApproveLightningComponent/blob/master/ApprovalList.jpg)
