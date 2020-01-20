@@ -1,0 +1,228 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes" controller = "DSC_pendingapprovals" access="global" >
+    
+    <lightning:workspaceAPI aura:id="workspace" />
+    <aura:attribute name="allApprovalList" type="List[]" />
+    <aura:attribute name="finalApprovalList" type="List[]" />
+    <aura:attribute name="isSelectAll" type="boolean" default="false"/>    
+    <aura:attribute name="sortField" type="String" />
+    <aura:attribute name="apprvORRejctComment"  type="String" />
+    <aura:attribute name="showPopUp" type="Boolean" default="false"/>     
+    <aura:attribute name="sortAsc" type="Boolean" />
+    <aura:attribute name="isApproved" type="Boolean" default="False"/>
+    <aura:attribute name="isRejection" type="Boolean" default="False"/>
+    <aura:attribute name="filterSelected" type="String" />
+    <aura:attribute name="selectedRec" type="List[]" />
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    
+    <lightning:card iconName="action:approval" title="Items to Approve (Operations Only)" >
+        <div class="slds-grid slds-p-bottom_xx-small" >  
+            <div class="slds-col slds-size_1-of-12">
+                <div class="slds-page-header__title slds-truncate slds-p-left_medium" > Filters: </div>
+             </div>
+            <div class="slds-col slds-size_4-of-12">
+                <lightning:buttonGroup>
+                    <lightning:button iconName="{!v.filterSelected == 'All' ? 'utility:check' : '' }"  label="All" onclick="{!c.doInit}" /> 
+                    <lightning:button iconName="{!v.filterSelected == 'Surrender' ? 'utility:check' : '' }"  label="Surrenders" onclick="{!c.surrendersList}" />
+                    <lightning:button iconName="{!v.filterSelected == 'deathClaim' ? 'utility:check' : '' }"  label="Death Claims" onclick="{!c.deathClaimList}"/> 
+                    <lightning:button iconName="{!v.filterSelected == 'other' ? 'utility:check' : '' }"  label="Others" onclick="{!c.othersList}"/> 
+                </lightning:buttonGroup>  
+            </div>
+            <div class="slds-col slds-size_7-of-12"> 
+                <lightning:buttonGroup >
+                    <lightning:button label="Approve"  iconName="utility:approval" class="slds-button slds-button_success" onclick="{!c.massrecordApprovebuttonClick }"/>
+                    &nbsp;
+                    <lightning:button label="Reject" class="slds-button slds-button_text-destructive" iconName="action:reject"  onclick="{!c.massrecordRejectedbuttonClick }" />
+                </lightning:buttonGroup>
+            </div>
+        </div>
+        
+        <div>    
+            <table  id="tableIdCC" cellspacing="0" class="compCheckTable slds-table slds-table_bordered  slds-table_col-bordered slds-table_striped ">
+                <thead>
+                    <tr class="slds-text-title slds-text-title_caps">
+                        
+                        <th class="tabHeadr" >           
+                            <label class="slds-checkbox">
+                                <ui:inputCheckbox value="{!v.isSelectAll}" change="{!c.handleSelectAll}" aura:id="selectAll"/>
+                                <span class="slds-checkbox--faux" />
+                                <span class="slds-form-element__label"></span>
+                            </label>
+                        </th> 
+                        
+                        <th class=" tabHeadr" scope="col"> </th>   
+                        
+                        <th class=" tabHeadr" scope="col">
+                            <div class="slds-truncate"><b>Action</b></div>
+                        </th>
+                        
+                        
+                        <th class=" tabHeadr" scope="col">
+                            <div onclick="{!c.sortBycsNumbr}" class="slds-truncate"> <b>Case Number</b>
+                                <aura:if isTrue="{!v.sortField=='caseNumber'}">
+                                    <span>  {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        <th class="tabHeadr" scope="col"> 
+                            <div onclick="{!c.sortByType}" class="slds-truncate"><b>Type</b>
+                                <aura:if isTrue="{!v.sortField=='type'}">
+                                    <span> {!v.sortAsc ? '&#8593;' : '&#8595;'}</span>
+                                </aura:if>
+                            </div>       
+                        </th>
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByAmount}" class="slds-truncate"><b>Case<br/>Amount</b>
+                                <aura:if isTrue="{!v.sortField=='amount'}">
+                                    <span>  {!v.sortAsc ? '&#8593;' : '&#8595;'}</span>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortpolicyAmount}" class="slds-truncate"><b>Policy<br/>Amount</b>
+                                <aura:if isTrue="{!v.sortField=='policyAmount'}">
+                                    <span>{!v.sortAsc ? '&#8593;' : '&#8595;'}</span>
+                                </aura:if>
+                            </div>
+                        </th> 
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByPolicyNum}" class="slds-truncate"> <b>Policy<br/>Number</b>
+                                <aura:if isTrue="{!v.sortField=='PolicyNumber'}">
+                                    <span>  {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByPolicyholder}" class="slds-truncate"> <b>Policy Holder</b>
+                                <aura:if isTrue="{!v.sortField=='policyHolderName'}">
+                                    <span>  {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th> 
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByLAClient}" class="slds-truncate"> <b>LA Client</b>
+                                <aura:if isTrue="{!v.sortField=='LAClientName'}">
+                                    <span>  {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th> 
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByFlagPegno}" class="slds-truncate"><b>Flag<br/>Pegno</b>
+                                <aura:if isTrue="{!v.sortField=='flagPegno'}">
+                                    <span> {!v.sortAsc ? '&#8593;' : '&#8595;'}</span>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortBysubmittedDate}" class="slds-truncate"> <b>Date<br/>Submitted</b>
+                                <aura:if isTrue="{!v.sortField=='dateSubmit'}">
+                                    <span> {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortBysubmittedby}" class="slds-truncate"> <b>Submitted By</b>
+                                <aura:if isTrue="{!v.sortField=='Submitted'}">
+                                    <span>  {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th> 
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByLowValueApp}" class="slds-truncate"><b>Low Value<br/>Approver</b>
+                                <aura:if isTrue="{!v.sortField=='lowvalueapprover'}">
+                                    <span style="color:blue;font-weight:bold"> {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th>
+                        
+                        <th class="tabHeadr"  scope="col">
+                            <div onclick="{!c.sortByMediumValuApp}" class="slds-truncate"><b>Medium Value<br/>Approver</b>
+                                <aura:if isTrue="{!v.sortField=='mediumvalApprover'}">
+                                    <span> {!v.sortAsc ? '&#8593;' : '&#8595;'} </span>
+                                </aura:if>
+                            </div>
+                        </th> 
+                        
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <aura:iteration items="{!v.finalApprovalList}" var="st" indexVar="i">
+                        <tr>
+                            <th>
+                                <label class="slds-checkbox">
+                                    <ui:inputCheckbox aura:id="checkContact" value="" text="{!st.workItmId}"/>
+                                    <span class="slds-checkbox--faux" />
+                                    <span class="slds-form-element__label"></span>
+                                </label>
+                            </th> 
+                            <td> <div class="slds-truncate letter" >{!i+1}</div>  </td> 
+                            <td > <a> <div class="slds-truncate letter" onclick="{!c.openActionSubtab}" data-param3="{!st.workItmId}">Approve/Reject</div> </a></td> 
+                            <td> <a> <div class="slds-truncate letter" onclick="{!c.openTabWithSubtab}" data-param1="{!st.CaseId}">{!st.caseNumber}</div> </a></td>   
+                            <td> <div class="slds-truncate letter" >{!st.type}</div>  </td> 
+                            <td> <div class="slds-truncate letter" > <lightning:formattedNumber value= "{!st.amount}" style="currency" currencyCode="EUR"/></div> </td> 
+                            <td> <div class="slds-truncate letter"> <lightning:formattedNumber value= "{!st.policyAmount}" style="currency" currencyCode="EUR"/></div> </td> 
+                            <td ><a> <div class="slds-truncate letter"  onclick="{!c.openTabWithSubtab}" data-param2="{!st.PolicyId}">{!st.PolicyNumber}</div> </a> </td> 
+                            <td ><a> <div class="slds-truncate letter"  onclick="{!c.openTabWithSubtab}" data-param3="{!st.policyHolderID}">{!st.policyHolderName}</div> </a> </td> 
+                            <td ><a> <div class="slds-truncate letter"  onclick="{!c.openTabWithSubtab}" data-param4="{!st.LAClientID}">{!st.LAClientName}</div> </a> </td> 
+                            <td> <div class="slds-truncate letter" >{!st.flagPegno}</div> </td>          
+                            <td> <span style="display:none">Created Date</span><ui:outputDate format="dd/MM/yyyy" value="{!st.dateSubmit}"/></td> 
+                            <td> <div class="slds-truncate letter" >{!st.Submitted}</div> </td>
+                            <td> <div class="slds-truncate letter" >{!st.lowvalueapprover}</div> </td> 
+                            <td> <div class="slds-truncate letter" >{!st.mediumvalApprover}</div> </td>  
+                        </tr>
+                    </aura:iteration>
+                </tbody>            
+            </table>
+        </div>
+    </lightning:card>
+    
+    
+    <aura:if isTrue="{!v.showPopUp}">  
+        <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <lightning:buttonIcon iconName="utility:close"
+                                          onclick="{! c.closeModel }"
+                                          alternativeText="close"
+                                          variant="bare-inverse"
+                                          class="slds-modal__close"/>
+                    <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Approval/Rejection Comment</h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                    <lightning:textarea name="input1" label="Comment"  value="{! v.apprvORRejctComment }"/>         
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning:button variant="neutral" 
+                                      label="Cancel"
+                                      title="Cancel"
+                                      onclick="{! c.closeModel }"/>
+                    <aura:if isTrue="{!v.isApproved}"> 
+                        <lightning:button variant="success" 
+                                          label="Approve"
+                                          onclick="{! c.massApprovRecords }"/>
+                    </aura:if>  
+                    
+                    <aura:if isTrue="{!v.isRejection}"> 
+                        <lightning:button variant="destructive" 
+                                          label="Reject"
+                                          onclick="{! c.massRejectRecords }"/>
+                    </aura:if>   
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </aura:if>
+    
+</aura:component>
