@@ -1,4 +1,4 @@
-public class DSC_pendingapprovals {
+=public class DSC_pendingapprovals {
     
     @AuraEnabled
     public static List<Result> getPendingApprvl() {
@@ -7,39 +7,41 @@ public class DSC_pendingapprovals {
         //ProcessInstance.TargetObjectId = record Id
         //ProcessInstance.ProcessDefinition.Name =Approval Name
         
-        List<Result> approvlLst = new  List<Result>();
-        List<ProcessInstanceWorkItem> Piwi = new List<ProcessInstanceWorkItem>();
-        Set<Id> grpId = new Set<Id>();
+        List<Result> itemToApprovelList = new  List<Result>();
+        List<ProcessInstanceWorkItem> processWorkItemList = new List<ProcessInstanceWorkItem>();
+        Set<Id> groupIds = new Set<Id>();
         Set<Id> grpWUserRoleId = new Set<Id>();
-        Set<Id> cratedbyId = new Set<Id>(); 
+        Set<Id> createdbyIds = new Set<Id>(); 
         
-        for(Group gp1 : [SELECT id, RelatedId from group where RelatedId =: userinfo.getUserRoleId()])  
-        {
-            grpId.add(gp1.id);  
-        }  
-        for(GroupMember gp  : [Select groupId from GroupMember where Group.Type = 'Queue' and (UserOrGroupId =: userinfo.getuserid() or UserOrGroupId In : grpId)])
-        {
+        for(Group gp1 : [SELECT id, RelatedId from group where RelatedId =: userinfo.getUserRoleId()])  {
+            groupIds.add(gp1.id);  
+        }
+        
+        for(GroupMember gp  : [Select groupId from GroupMember where Group.Type = 'Queue' and (UserOrGroupId =: userinfo.getuserid() or UserOrGroupId In : groupIds)]){
             grpWUserRoleId.add(gp.groupId);
         }
+        
         grpWUserRoleId.add(userinfo.getUserId());
         
         Map<Id, ProcessInstanceWorkItem> CasIdNPiwi= new Map<Id, ProcessInstanceWorkItem>();
-        Piwi = [SELECT ProcessInstance.TargetObjectId,  ProcessInstance.TargetObject.Name,  CreatedDate, CreatedById, ActorId, ProcessInstanceId, Id 
-                FROM ProcessInstanceWorkItem 
-                WHERE ProcessInstance.Status = 'Pending' and ProcessInstance.TargetObject.Type = 'Case' and  ActorId In : grpWUserRoleId Order by CreatedDate ASC ];          
         
-        for(ProcessInstanceWorkItem pw   : Piwi)  
-        {
+        processWorkItemList = [SELECT ProcessInstance.TargetObjectId,  ProcessInstance.TargetObject.Name,  CreatedDate, CreatedById, ActorId, ProcessInstanceId, Id 
+                               FROM ProcessInstanceWorkItem 
+                               WHERE ProcessInstance.Status = 'Pending' and ProcessInstance.TargetObject.Type = 'Case' and  ActorId In : grpWUserRoleId Order by CreatedDate ASC ];          
+        
+        for(ProcessInstanceWorkItem pw   : processWorkItemList) {
             CasIdNPiwi.put(pw.ProcessInstance.TargetObjectId, pw);
-            cratedbyId.add(pw.CreatedById)  ;
+            createdbyIds.add(pw.CreatedById)  ;
         }
+        
         Map<Id, Case> mapCaseDetails = new Map<Id, Case>([SELECT id, Type, Low_Value_Approver__c, Medium_Value_Approver__c, Flag_Pegno_Vincolo__c, Policy_Amount__c, Ammontare__c,
                                                           Policy__c, Policy__r.Name, Client__r.id, Client__r.Name, Policy__r.LA_Client__r.Name, Policy__r.LA_Client__r.Id 
                                                           FROM Case 
-                                                          WHERE id In : CasIdNPiwi.keySet() ]);   
-        Map<Id, User> idUserMap = new Map<Id, User>([select id, name from user where id In : cratedbyId]);
+                                                          WHERE id In : CasIdNPiwi.keySet() ]);
         
-        for(ProcessInstanceWorkItem pw   : Piwi)  
+        Map<Id, User> idUserMap = new Map<Id, User>([select id, name from user where id In : createdbyIds]);
+        
+        for(ProcessInstanceWorkItem pw   : processWorkItemList)  
         {
             result val = new Result(string.valueof(pw.ProcessInstance.TargetObject.Name), pw.ProcessInstance.TargetObjectId, 
                                     mapCaseDetails.get(pw.ProcessInstance.TargetObjectId).Type,   mapCaseDetails.get(pw.ProcessInstance.TargetObjectId).Flag_Pegno_Vincolo__c,
@@ -49,9 +51,9 @@ public class DSC_pendingapprovals {
                                     idUserMap.get(pw.CreatedById).Name,  pw.Id,mapCaseDetails.get(pw.ProcessInstance.TargetObjectId).Client__r.id,
                                     mapCaseDetails.get(pw.ProcessInstance.TargetObjectId).Client__r.Name, mapCaseDetails.get(pw.ProcessInstance.TargetObjectId).Policy__r.LA_Client__r.Id ,
                                     mapCaseDetails.get(pw.ProcessInstance.TargetObjectId).Policy__r.LA_Client__r.Name );
-            approvlLst.add(val);  
+            itemToApprovelList.add(val);  
         }
-        return approvlLst;
+        return itemToApprovelList;
     }
     
     
